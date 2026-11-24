@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Verdant Night Theme Tokens */
+  --bg: #080D0B;
+  --surface: #0F1613;
+  --surface-2: #16201B;
+  --surface-3: #1D2A24;
+  --border: #22302A;
+  --border-2: #2F4239;
+
+  --text: #E8F1EC;
+  --text-2: #93A59B;
+  --text-3: #5F6F66;
+  --pearl: #F4FAF7;
+
+  --accent: #34D399;
+  --accent-deep: #0E7A56;
+  --accent-soft: rgba(52, 211, 153, 0.12);
+
+  --people: #34D399;
+  --work: #2DB6A8;
+  --performance: #B5E35B;
+
+  --success: #4ADE80;
+  --warning: #F2B84B;
+  --danger: #F0646E;
+  --info: #6AA8F0;
+
+  --radius: 10px;
+  --radius-lg: 14px;
+  --ring: 0 0 0 3px rgba(52, 211, 153, 0.18);
+  --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --spotlight: radial-gradient(600px circle at 0% 0%, rgba(52, 211, 153, 0.14), transparent 60%);
+
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-ui: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Verdant Night utilities */
+.spotlight-card {
+  background-image: var(--spotlight);
+}
+
+.surface-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--highlight);
+  border-radius: var(--radius-lg);
+}
+
+.surface-raised {
+  background-color: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+}
+
+.text-pearl {
+  color: var(--pearl);
+}
+
+.font-serif-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+}

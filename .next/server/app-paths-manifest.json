@@ -1,0 +1,20 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/documents/[id]/download/route": "app/api/documents/[id]/download/route.js",
+  "/api/storage/upload/route": "app/api/storage/upload/route.js",
+  "/api/storage/download/route": "app/api/storage/download/route.js",
+  "/(dashboard)/directory/[id]/page": "app/(dashboard)/directory/[id]/page.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/billing/page": "app/(dashboard)/billing/page.js",
+  "/(dashboard)/directory/page": "app/(dashboard)/directory/page.js",
+  "/(dashboard)/directory/org-chart/page": "app/(dashboard)/directory/org-chart/page.js",
+  "/(dashboard)/leave/page": "app/(dashboard)/leave/page.js",
+  "/(dashboard)/performance/page": "app/(dashboard)/performance/page.js",
+  "/(dashboard)/documents/page": "app/(dashboard)/documents/page.js",
+  "/(dashboard)/onboarding/page": "app/(dashboard)/onboarding/page.js",
+  "/(dashboard)/timesheets/page": "app/(dashboard)/timesheets/page.js",
+  "/(dashboard)/projects/[id]/page": "app/(dashboard)/projects/[id]/page.js",
+  "/(dashboard)/projects/page": "app/(dashboard)/projects/page.js",
+  "/page": "app/page.js",
+  "/portal/page": "app/portal/page.js"
+}

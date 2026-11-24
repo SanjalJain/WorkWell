@@ -1,0 +1,20 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/documents/[id]/download/route": "/api/documents/[id]/download",
+  "/api/storage/upload/route": "/api/storage/upload",
+  "/api/storage/download/route": "/api/storage/download",
+  "/(dashboard)/directory/[id]/page": "/directory/[id]",
+  "/(dashboard)/dashboard/page": "/dashboard",
+  "/(dashboard)/billing/page": "/billing",
+  "/(dashboard)/directory/page": "/directory",
+  "/(dashboard)/directory/org-chart/page": "/directory/org-chart",
+  "/(dashboard)/leave/page": "/leave",
+  "/(dashboard)/performance/page": "/performance",
+  "/(dashboard)/documents/page": "/documents",
+  "/(dashboard)/onboarding/page": "/onboarding",
+  "/(dashboard)/timesheets/page": "/timesheets",
+  "/(dashboard)/projects/[id]/page": "/projects/[id]",
+  "/(dashboard)/projects/page": "/projects",
+  "/page": "/",
+  "/portal/page": "/portal"
+}
