@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { listProjects } from "@/modules/work/service";
 import { rawPrisma } from "@/lib/db";
-import { CreateProjectModal } from "./ProjectClientComponents";
+import { CreateProjectModal, CreateClientModal, ProjectStatusSelector } from "./ProjectClientComponents";
 import { FolderKanban, Users, Clock, DollarSign, ArrowRight, Building2, CheckCircle2 } from "lucide-react";
 import { Role, ProjectStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -44,13 +44,16 @@ export default async function ProjectsPage() {
         </div>
 
         {canCreate && (
-          <CreateProjectModal
-            clients={clients}
-            leads={employees.map((e) => ({
-              id: e.id,
-              name: `${e.firstName} ${e.lastName}`,
-            }))}
-          />
+          <div className="flex items-center gap-2.5">
+            <CreateClientModal />
+            <CreateProjectModal
+              clients={clients}
+              leads={employees.map((e) => ({
+                id: e.id,
+                name: `${e.firstName} ${e.lastName}`,
+              }))}
+            />
+          </div>
         )}
       </div>
 
@@ -78,15 +81,22 @@ export default async function ProjectsPage() {
                     <Building2 className="w-3.5 h-3.5 text-[#2DB6A8]" />
                     <span className="font-medium truncate max-w-[180px]">{project.clientName}</span>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider ${
-                      project.status === ProjectStatus.ACTIVE
-                        ? "bg-[#2DB6A8]/15 text-[#2DB6A8] border border-[#2DB6A8]/30"
-                        : "bg-[#1D2A24] text-[#93A59B] border border-[#2F4239]"
-                    }`}
-                  >
-                    {project.status}
-                  </span>
+                  {canCreate ? (
+                    <ProjectStatusSelector
+                      projectId={project.id}
+                      currentStatus={project.status}
+                    />
+                  ) : (
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider ${
+                        project.status === ProjectStatus.ACTIVE
+                          ? "bg-[#2DB6A8]/15 text-[#2DB6A8] border border-[#2DB6A8]/30"
+                          : "bg-[#1D2A24] text-[#93A59B] border border-[#2F4239]"
+                      }`}
+                    >
+                      {project.status}
+                    </span>
+                  )}
                 </div>
 
                 <div>

@@ -164,6 +164,40 @@ export async function launchReviewCycle(cycleId: string, user: SessionUser) {
 }
 
 /**
+ * Closes an active review cycle, finalizing all submissions.
+ */
+export async function closeReviewCycle(cycleId: string, user: SessionUser) {
+  if (!canManageReviewCycle(user)) {
+    throw new Error("Unauthorized to close review cycle");
+  }
+
+  const cycle = await rawPrisma.reviewCycle.findFirst({
+    where: { id: cycleId, organizationId: user.organizationId },
+  });
+  if (!cycle) throw new Error("Review cycle not found");
+
+  return withTenant(user.organizationId, async (tx) => {
+    const updated = await tx.reviewCycle.update({
+      where: { id: cycleId },
+      data: { status: ReviewCycleStatus.COMPLETED },
+    });
+
+    await logAudit(
+      {
+        organizationId: user.organizationId,
+        userId: user.userId,
+        action: "CLOSE_REVIEW_CYCLE",
+        entity: "ReviewCycle",
+        entityId: cycleId,
+      },
+      tx
+    );
+
+    return updated;
+  });
+}
+
+/**
  * Submits a completed review with ratings and structured feedback.
  * Rejects writes if the cycle is inactive or closed.
  */
@@ -705,5 +739,37 @@ export async function listPublicKudos(user: SessionUser): Promise<FeedbackDTO[]>
     type: k.type,
     message: k.message,
     createdAt: k.createdAt.toISOString().split("T")[0],
+  }));
+}
+
+/**
+ * Lists private feedback sent directly to or from the current employee.
+ * Strict privacy isolation: Never exposed to organizational peers or public feeds.
+ */
+export async function listPrivateFeedback(user: SessionUser): Promise<FeedbackDTO[]> {
+  if (!user.employeeId) return [];
+
+  const feedback = await rawPrisma.feedback.findMany({
+    where: {
+      organizationId: user.organizationId,
+      type: FeedbackType.PRIVATE_FEEDBACK,
+      OR: [{ toId: user.employeeId }, { fromId: user.employeeId }],
+    },
+    include: {
+      sender: { select: { firstName: true, lastName: true } },
+      receiver: { select: { firstName: true, lastName: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return feedback.map((f) => ({
+    id: f.id,
+    fromId: f.fromId,
+    fromName: `${f.sender.firstName} ${f.sender.lastName}`,
+    toId: f.toId,
+    toName: `${f.receiver.firstName} ${f.receiver.lastName}`,
+    type: f.type,
+    message: f.message,
+    createdAt: f.createdAt.toISOString().split("T")[0],
   }));
 }

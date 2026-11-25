@@ -2,7 +2,7 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "crypto";
 import path from "path";
-import { Role, InvoiceStatus, LeaveStatus } from "@prisma/client";
+import { Role, InvoiceStatus, LeaveStatus, FeedbackType } from "@prisma/client";
 import { encodeSession, decodeSession } from "../src/lib/auth";
 import { decideLeave, getLeaveBalances } from "../src/modules/people/leave-service";
 import { toggleOnboardingItem } from "../src/modules/people/onboarding-service";
@@ -298,7 +298,7 @@ describe("Sprint 1 Security & Multi-Tenancy Hardening", () => {
       await assert.rejects(
         async () => {
           await sendFeedback(
-            { toId: empB.id, type: "KUDOS", message: "Great job across orgs!" },
+            { toId: empB.id, type: FeedbackType.PUBLIC_KUDOS, message: "Great job across orgs!" },
             sessionUserA
           );
         },

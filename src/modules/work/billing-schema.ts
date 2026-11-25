@@ -41,6 +41,7 @@ export interface InvoiceDTO {
   totalHoursBilled: string;
   isOverdue: boolean;
   createdAt: string;
+  lineItems?: InvoiceLineItemDTO[];
 }
 
 export interface InvoiceDetailDTO extends InvoiceDTO {

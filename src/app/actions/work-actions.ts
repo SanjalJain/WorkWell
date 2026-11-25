@@ -3,7 +3,9 @@
 import { getSessionUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import {
+  createClient,
   createProject,
+  updateProjectStatus,
   addProjectMember,
   createTask,
   moveTask,
@@ -11,12 +13,43 @@ import {
   deleteTimeEntry,
 } from "@/modules/work/service";
 import {
+  CreateClientSchema,
   CreateProjectSchema,
   AddProjectMemberSchema,
   CreateTaskSchema,
   MoveTaskSchema,
   LogTimeSchema,
 } from "@/modules/work/schema";
+import { ProjectStatus } from "@prisma/client";
+
+export async function createClientAction(formData: FormData) {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const raw = {
+    name: formData.get("name") as string,
+    email: (formData.get("email") as string) || undefined,
+    billingAddress: (formData.get("billingAddress") as string) || undefined,
+  };
+
+  const parsed = CreateClientSchema.parse(raw);
+  const client = await createClient(parsed, user);
+
+  revalidatePath("/projects");
+  revalidatePath("/billing");
+  return { success: true, clientId: client.id };
+}
+
+export async function updateProjectStatusAction(projectId: string, status: ProjectStatus) {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Unauthorized");
+
+  await updateProjectStatus(projectId, status, user);
+
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
 
 export async function createProjectAction(formData: FormData) {
   const user = await getSessionUser();

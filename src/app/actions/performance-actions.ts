@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   createReviewCycle,
   launchReviewCycle,
+  closeReviewCycle,
   submitReview,
   createObjective,
   createKeyResult,
@@ -46,6 +47,15 @@ export async function launchReviewCycleAction(cycleId: string) {
   if (!user) throw new Error("Unauthorized");
 
   await launchReviewCycle(cycleId, user);
+  revalidatePath("/performance");
+  return { success: true };
+}
+
+export async function closeReviewCycleAction(cycleId: string) {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Unauthorized");
+
+  await closeReviewCycle(cycleId, user);
   revalidatePath("/performance");
   return { success: true };
 }

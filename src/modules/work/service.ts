@@ -136,6 +136,42 @@ export async function createProject(input: CreateProjectInput, user: SessionUser
   });
 }
 
+export async function updateProjectStatus(
+  projectId: string,
+  status: ProjectStatus,
+  user: SessionUser
+) {
+  if (!canManageProject(user)) {
+    throw new Error("Unauthorized to update project status");
+  }
+
+  const project = await rawPrisma.project.findFirst({
+    where: { id: projectId, organizationId: user.organizationId },
+  });
+  if (!project) throw new Error("Project not found");
+
+  return withTenant(user.organizationId, async (tx) => {
+    const updated = await tx.project.update({
+      where: { id: projectId },
+      data: { status },
+    });
+
+    await logAudit(
+      {
+        organizationId: user.organizationId,
+        userId: user.userId,
+        action: `PROJECT_STATUS_${status}`,
+        entity: "Project",
+        entityId: projectId,
+        metadata: { from: project.status, to: status },
+      },
+      tx
+    );
+
+    return updated;
+  });
+}
+
 export async function listProjects(user: SessionUser): Promise<ProjectDTO[]> {
   const isClient = user.role === Role.CLIENT;
 

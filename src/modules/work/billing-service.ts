@@ -273,22 +273,36 @@ export async function updateInvoiceStatus(
 /**
  * Background / Cron job helper to mark past-due SENT invoices as OVERDUE.
  */
-export async function checkOverdueInvoices(organizationId: string) {
+export async function checkOverdueInvoices(organizationId?: string): Promise<number> {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
-  return withTenant(organizationId, async (tx) => {
-    return tx.invoice.updateMany({
-      where: {
-        organizationId,
-        status: InvoiceStatus.SENT,
-        dueDate: { lt: today },
-      },
-      data: {
-        status: InvoiceStatus.OVERDUE,
-      },
+  if (organizationId) {
+    return withTenant(organizationId, async (tx) => {
+      const res = await tx.invoice.updateMany({
+        where: {
+          organizationId,
+          status: InvoiceStatus.SENT,
+          dueDate: { lt: today },
+        },
+        data: {
+          status: InvoiceStatus.OVERDUE,
+        },
+      });
+      return res.count;
     });
+  }
+
+  const res = await rawPrisma.invoice.updateMany({
+    where: {
+      status: InvoiceStatus.SENT,
+      dueDate: { lt: today },
+    },
+    data: {
+      status: InvoiceStatus.OVERDUE,
+    },
   });
+  return res.count;
 }
 
 /**
@@ -340,6 +354,13 @@ export async function listInvoices(user: SessionUser): Promise<InvoiceDTO[]> {
       totalHoursBilled: totalHours.toFixed(1),
       isOverdue,
       createdAt: inv.createdAt.toISOString().split("T")[0],
+      lineItems: inv.lineItems.map((li) => ({
+        id: li.id,
+        description: li.description,
+        hours: Number(li.hours).toFixed(1),
+        rate: Number(li.rate).toFixed(2),
+        amount: Number(li.amount).toFixed(2),
+      })),
     };
   });
 }

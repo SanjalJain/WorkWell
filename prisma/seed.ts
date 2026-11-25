@@ -18,7 +18,7 @@ import {
 
 const prisma = new PrismaClient();
 
-async function main() {
+export async function seedDemoData() {
   console.log("🌱 Starting comprehensive database seed for Brightwave Studio...");
 
   // Clean existing demo data if any
@@ -280,7 +280,8 @@ async function main() {
     ],
   });
 
-  const curYear = new Date().getFullYear();
+  const now = new Date();
+  const curYear = now.getFullYear();
   await prisma.publicHoliday.createMany({
     data: [
       { organizationId: org.id, name: "New Year's Day", date: new Date(`${curYear}-01-01`) },
@@ -293,16 +294,25 @@ async function main() {
   });
 
   // Approved Leave history
+  const currentMonth = now.getMonth();
+  const leaveStartDate1 = new Date(curYear, Math.max(0, currentMonth - 1), 10);
+  const leaveEndDate1 = new Date(curYear, Math.max(0, currentMonth - 1), 12);
+  const leaveDecidedAt1 = new Date(curYear, Math.max(0, currentMonth - 1), 5);
+
+  const leaveStartDate2 = new Date(curYear, currentMonth, 2);
+  const leaveEndDate2 = new Date(curYear, currentMonth, 2);
+  const leaveDecidedAt2 = new Date(curYear, currentMonth, 2);
+
   await prisma.leaveRequest.create({
     data: {
       employeeId: empAlex.id,
       leaveTypeId: leavePTO.id,
-      startDate: new Date("2026-04-10"),
-      endDate: new Date("2026-04-12"),
+      startDate: leaveStartDate1,
+      endDate: leaveEndDate1,
       daysCount: new Prisma.Decimal(3.0),
       status: LeaveStatus.APPROVED,
       decidedBy: empManager.id,
-      decidedAt: new Date("2026-04-05"),
+      decidedAt: leaveDecidedAt1,
       reason: "Spring recharge & family visit",
     },
   });
@@ -310,12 +320,12 @@ async function main() {
     data: {
       employeeId: empChloe.id,
       leaveTypeId: leaveSick.id,
-      startDate: new Date("2026-05-02"),
-      endDate: new Date("2026-05-02"),
+      startDate: leaveStartDate2,
+      endDate: leaveEndDate2,
       daysCount: new Prisma.Decimal(1.0),
       status: LeaveStatus.APPROVED,
       decidedBy: empManager.id,
-      decidedAt: new Date("2026-05-02"),
+      decidedAt: leaveDecidedAt2,
       reason: "Flu recovery",
     },
   });
@@ -456,7 +466,6 @@ async function main() {
   }
 
   // 8. Time Entries across past 4 months
-  const now = new Date();
   const pastDates = [
     new Date(now.getFullYear(), now.getMonth() - 3, 12),
     new Date(now.getFullYear(), now.getMonth() - 2, 15),
@@ -544,7 +553,7 @@ async function main() {
       status: InvoiceStatus.SENT,
       issueDate: pastDates[2],
       dueDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
-      total: new Prisma.Decimal(9280.0),
+      total: new Prisma.Decimal(9480.0),
       lineItems: {
         create: [
           {
@@ -560,7 +569,7 @@ async function main() {
             description: `QA Test Suite & Validation - ${projectAcme.name}`,
             hours: new Prisma.Decimal(28.0),
             rate: new Prisma.Decimal(110.0),
-            amount: new Prisma.Decimal(2880.0),
+            amount: new Prisma.Decimal(3080.0),
             timeEntries: {
               connect: [{ id: createdTimeEntries[5].id }],
             },
@@ -647,13 +656,14 @@ async function main() {
   });
 
   // 11. Performance Review Cycle
+  const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
   const reviewCycle = await prisma.reviewCycle.create({
     data: {
       organizationId: org.id,
-      name: "Q2 2026 Studio Performance Cycle",
+      name: `Q${currentQuarter} ${curYear} Studio Performance Cycle`,
       status: ReviewCycleStatus.ACTIVE,
-      startDate: new Date("2026-06-01"),
-      endDate: new Date("2026-06-30"),
+      startDate: new Date(curYear, (currentQuarter - 1) * 3, 1),
+      endDate: new Date(curYear, currentQuarter * 3, 0),
       reviews: {
         create: [
           {
@@ -747,7 +757,7 @@ async function main() {
   console.log(`- CLIENT:   client@acmeglobal.com\n`);
 }
 
-main()
+seedDemoData()
   .catch((e) => {
     console.error("Seed error:", e);
     process.exit(1);

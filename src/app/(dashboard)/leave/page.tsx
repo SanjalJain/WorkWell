@@ -1,6 +1,12 @@
 import { getSessionUser } from "@/lib/auth";
 import { getLeaveBalances, listLeaveRequests } from "@/modules/people/leave-service";
-import { RequestLeaveModal, LeaveDecisionButtons, CancelLeaveButton } from "./LeaveClientComponents";
+import { rawPrisma } from "@/lib/db";
+import {
+  RequestLeaveModal,
+  LeaveDecisionButtons,
+  CancelLeaveButton,
+  TeamLeaveCalendar,
+} from "./LeaveClientComponents";
 import { Calendar, Clock, CheckCircle2, AlertCircle, Ban } from "lucide-react";
 import { LeaveStatus, Role } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -13,13 +19,18 @@ export default async function LeavePage() {
     redirect("/portal");
   }
 
-  const [balances, requests] = await Promise.all([
+  const [balances, requests, holidays] = await Promise.all([
     user.employeeId ? getLeaveBalances(user.employeeId, user.organizationId) : [],
     listLeaveRequests(user),
+    rawPrisma.publicHoliday.findMany({
+      where: { organizationId: user.organizationId },
+      orderBy: { date: "asc" },
+    }),
   ]);
 
   const pendingApprovals = requests.filter((r) => r.canApprove);
   const myRequests = requests.filter((r) => r.employeeId === user.employeeId);
+  const approvedLeaves = requests.filter((r) => r.status === LeaveStatus.APPROVED);
 
   return (
     <div className="space-y-8">
@@ -100,6 +111,15 @@ export default async function LeavePage() {
           </div>
         </div>
       )}
+
+      {/* Team Leave Schedule Calendar */}
+      <TeamLeaveCalendar
+        approvedLeaves={approvedLeaves}
+        publicHolidays={holidays.map((h) => ({
+          name: h.name,
+          date: h.date.toISOString().split("T")[0],
+        }))}
+      />
 
       {/* Leave Requests Table */}
       <div className="surface-card overflow-hidden space-y-4">

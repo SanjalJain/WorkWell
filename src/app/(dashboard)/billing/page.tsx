@@ -1,7 +1,11 @@
 import { getSessionUser } from "@/lib/auth";
 import { listInvoices } from "@/modules/work/billing-service";
 import { rawPrisma } from "@/lib/db";
-import { GenerateInvoiceModal, InvoiceActionsDropdown } from "./BillingClientComponents";
+import {
+  GenerateInvoiceModal,
+  InvoiceActionsDropdown,
+  InvoiceLineItemsModal,
+} from "./BillingClientComponents";
 import { Receipt, DollarSign, Clock, CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Role, InvoiceStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -120,14 +124,19 @@ export default async function BillingPage() {
               {invoices.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-5 py-8 text-center text-[#5F6F66]">
-                    No invoices on record. Click "Generate Invoice" to bill unbilled project hours.
+                    No invoices on record. Click &ldquo;Generate Invoice&rdquo; to bill unbilled project hours.
                   </td>
                 </tr>
               ) : (
                 invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-[#16201B]/40 transition-colors">
-                    <td className="px-5 py-3.5 font-mono font-semibold text-[#E8F1EC]">
-                      {inv.invoiceNumber}
+                    <td className="px-5 py-3.5 font-mono">
+                      <InvoiceLineItemsModal
+                        invoiceNumber={inv.invoiceNumber}
+                        clientName={inv.clientName}
+                        total={inv.total}
+                        lineItems={inv.lineItems || []}
+                      />
                     </td>
 
                     <td className="px-5 py-3.5 font-medium text-[#E8F1EC]">{inv.clientName}</td>

@@ -66,7 +66,7 @@ export async function startOnboarding(
     throw new Error("Onboarding template not found");
   }
 
-  return withTenant(user.organizationId, async (tx) => {
+  const checklist = await withTenant(user.organizationId, async (tx) => {
     // Check if checklist already exists
     const existing = await tx.onboardingChecklist.findUnique({
       where: {
@@ -85,7 +85,7 @@ export async function startOnboarding(
     });
 
     // Create checklist with snapshot of template items
-    const checklist = await tx.onboardingChecklist.create({
+    const createdChecklist = await tx.onboardingChecklist.create({
       data: {
         organizationId: user.organizationId,
         employeeId,
@@ -113,13 +113,13 @@ export async function startOnboarding(
         userId: user.userId,
         action: "START_ONBOARDING",
         entity: "OnboardingChecklist",
-        entityId: checklist.id,
+        entityId: createdChecklist.id,
         metadata: { employeeId, templateId },
       },
       tx
     );
 
-    return checklist;
+    return createdChecklist;
   });
 
   // Automatically generate starter tasks in internal project

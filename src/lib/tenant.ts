@@ -66,7 +66,7 @@ export function getTenantPrisma(organizationId: string) {
           ];
 
           if (tenantModels.includes(model)) {
-            const currentArgs = ((args ? { ...args } : {}) ?? {}) as {
+            const currentArgs = (args ? { ...args } : {}) as {
               where?: Record<string, unknown>;
               data?: Record<string, unknown> | Array<Record<string, unknown>>;
             };

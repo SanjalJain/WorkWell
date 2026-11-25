@@ -11,6 +11,7 @@ import {
   Lock,
 } from "lucide-react";
 import { InvoiceStatus, Role } from "@prisma/client";
+import { PortalInvoiceDownloadButton } from "@/app/(dashboard)/billing/BillingClientComponents";
 
 export default async function ClientPortalPage() {
   const user = await getSessionUser();
@@ -197,21 +198,7 @@ export default async function ClientPortalPage() {
                     </td>
 
                     <td className="px-5 py-3.5 text-right font-mono">
-                      <form
-                        action={async () => {
-                          "use server";
-                          const { generateInvoicePdf } = await import("@/modules/work/billing-service");
-                          await generateInvoicePdf(inv.id, user);
-                        }}
-                      >
-                        <button
-                          type="submit"
-                          className="inline-flex items-center gap-1 text-xs text-[#2DB6A8] hover:underline"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Statement</span>
-                        </button>
-                      </form>
+                      <PortalInvoiceDownloadButton invoiceId={inv.id} />
                     </td>
                   </tr>
                 ))

@@ -5,14 +5,20 @@ import {
   listObjectives,
   listOneOnOnes,
   listPublicKudos,
+  listPrivateFeedback,
 } from "@/modules/performance/service";
 import { rawPrisma } from "@/lib/db";
 import {
   CreateReviewCycleModal,
   LaunchCycleButton,
+  CloseCycleButton,
   SubmitReviewModal,
+  ReviewsReaderModal,
   CreateObjectiveModal,
+  AddKeyResultModal,
+  UpdateKeyResultModal,
   ScheduleOneOnOneModal,
+  OneOnOneNotesModal,
   SendKudosModal,
 } from "./PerformanceClientComponents";
 import {
@@ -26,6 +32,8 @@ import {
   MessageSquare,
   ArrowRight,
   TrendingUp,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { Role, ReviewStatus, ReviewCycleStatus, ReviewType } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -38,11 +46,23 @@ export default async function PerformancePage() {
     redirect("/portal");
   }
 
-  const [cycles, objectives, oneOnOnes, kudos, pendingReviews, allEmployees] = await Promise.all([
+  const [
+    cycles,
+    objectives,
+    oneOnOnes,
+    kudos,
+    privateFeedback,
+    myReviews,
+    pendingReviews,
+    allEmployees,
+    projects,
+  ] = await Promise.all([
     listReviewCycles(user),
     listObjectives(user),
     listOneOnOnes(user),
     listPublicKudos(user),
+    listPrivateFeedback(user),
+    user.employeeId ? listReviewsForSubject(user.employeeId, user) : Promise.resolve([]),
     user.employeeId
       ? rawPrisma.review.findMany({
           where: {
@@ -59,6 +79,11 @@ export default async function PerformancePage() {
       where: { organizationId: user.organizationId },
       select: { id: true, firstName: true, lastName: true, jobTitle: true, managerId: true },
       orderBy: { lastName: "asc" },
+    }),
+    rawPrisma.project.findMany({
+      where: { organizationId: user.organizationId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -143,7 +168,7 @@ export default async function PerformancePage() {
         <div className="space-y-4">
           {objectives.length === 0 ? (
             <div className="surface-card p-8 text-center text-xs text-[#5F6F66]">
-              No objectives recorded. Click "Add Objective" to start setting strategic company goals.
+              No objectives recorded. Click &ldquo;Add Objective&rdquo; to start setting strategic company goals.
             </div>
           ) : (
             objectives.map((obj) => (
@@ -179,9 +204,21 @@ export default async function PerformancePage() {
                   </div>
                 </div>
 
-                {/* Key Results */}
+                {/* Key Results Header & Add Button */}
+                <div className="flex items-center justify-between pt-2 border-t border-[#22302A]">
+                  <span className="font-mono-label text-[10px] text-[#93A59B]">
+                    Key Results ({obj.keyResults.length})
+                  </span>
+                  <AddKeyResultModal
+                    objectiveId={obj.id}
+                    objectiveTitle={obj.title}
+                    projects={projects}
+                  />
+                </div>
+
+                {/* Key Results Grid */}
                 {obj.keyResults.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#22302A]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {obj.keyResults.map((kr) => (
                       <div
                         key={kr.id}
@@ -193,9 +230,14 @@ export default async function PerformancePage() {
                             Target: {kr.targetValue} {kr.unit} (Current: {kr.currentValue})
                           </div>
                         </div>
-                        <span className="px-2 py-1 rounded bg-[#1D2A24] text-[#B5E35B] border border-[#2F4239] font-bold">
-                          {kr.progressPct}%
-                        </span>
+                        <UpdateKeyResultModal
+                          keyResultId={kr.id}
+                          title={kr.title}
+                          currentValue={kr.currentValue}
+                          targetValue={kr.targetValue}
+                          unit={kr.unit}
+                          progressPct={kr.progressPct}
+                        />
                       </div>
                     ))}
                   </div>
@@ -248,11 +290,26 @@ export default async function PerformancePage() {
                     </span>
                   </div>
 
-                  {c.status === ReviewCycleStatus.DRAFT && canManage && (
-                    <div className="pt-2 border-t border-[#22302A] flex justify-end">
-                      <LaunchCycleButton cycleId={c.id} />
+                  <div className="pt-2 border-t border-[#22302A] flex items-center justify-between gap-2">
+                    {myReviews.length > 0 ? (
+                      <ReviewsReaderModal
+                        cycleName={c.name}
+                        subjectName="Yourself"
+                        reviews={myReviews}
+                      />
+                    ) : (
+                      <div />
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      {c.status === ReviewCycleStatus.DRAFT && canManage && (
+                        <LaunchCycleButton cycleId={c.id} />
+                      )}
+                      {c.status === ReviewCycleStatus.ACTIVE && canManage && (
+                        <CloseCycleButton cycleId={c.id} />
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))
             )}
@@ -266,7 +323,15 @@ export default async function PerformancePage() {
               <Users className="w-4 h-4 text-[#34D399]" />
               <h3 className="text-sm font-semibold text-[#F4FAF7]">Private 1:1 Check-ins</h3>
             </div>
-            {directReports.length > 0 && <ScheduleOneOnOneModal reports={directReports.map((r) => ({ id: r.id, name: `${r.firstName} ${r.lastName}`, jobTitle: r.jobTitle }))} />}
+            {directReports.length > 0 && (
+              <ScheduleOneOnOneModal
+                reports={directReports.map((r) => ({
+                  id: r.id,
+                  name: `${r.firstName} ${r.lastName}`,
+                  jobTitle: r.jobTitle,
+                }))}
+              />
+            )}
           </div>
 
           <div className="space-y-3">
@@ -292,11 +357,19 @@ export default async function PerformancePage() {
                     </p>
                   )}
 
-                  {m.actionItems.length > 0 && (
-                    <div className="text-[10px] font-mono text-[#34D399]">
+                  <div className="flex items-center justify-between pt-1 border-t border-[#22302A]/60">
+                    <span className="text-[10px] font-mono text-[#34D399]">
                       {m.actionItems.filter((a) => a.completed).length} of {m.actionItems.length} Action Items Done
-                    </div>
-                  )}
+                    </span>
+                    <OneOnOneNotesModal
+                      meetingId={m.id}
+                      managerName={m.managerName}
+                      reportName={m.reportName}
+                      scheduledAt={m.scheduledAt}
+                      initialNotes={m.notes}
+                      initialActionItems={m.actionItems}
+                    />
+                  </div>
                 </div>
               ))
             )}
@@ -304,33 +377,72 @@ export default async function PerformancePage() {
         </div>
       </div>
 
-      {/* SECTION 3: SOCIAL KUDOS FEED */}
-      <div className="surface-card p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-[#22302A] pb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#B5E35B]" />
-            <h3 className="text-sm font-semibold text-[#F4FAF7]">Community Kudos Feed</h3>
+      {/* SECTION 3: SOCIAL KUDOS & PRIVATE FEEDBACK */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Public Kudos Feed */}
+        <div className="surface-card p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-[#22302A] pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#B5E35B]" />
+              <h3 className="text-sm font-semibold text-[#F4FAF7]">Community Kudos Feed</h3>
+            </div>
+            <span className="text-xs font-mono text-[#5F6F66]">Visible Studio-Wide</span>
           </div>
-          <span className="text-xs font-mono text-[#5F6F66]">Recognizing great work</span>
+
+          <div className="space-y-3">
+            {kudos.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[#5F6F66]">
+                No kudos posted yet. Click &ldquo;Give Kudos&rdquo; to recognize a peer!
+              </div>
+            ) : (
+              kudos.map((k) => (
+                <div key={k.id} className="p-3.5 rounded-xl bg-[#16201B] border border-[#2F4239] space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#E8F1EC]">{k.fromName}</span>
+                    <span className="text-[#B5E35B] font-mono text-[10px]">→ {k.toName}</span>
+                  </div>
+                  <p className="text-xs text-[#93A59B] leading-relaxed">“{k.message}”</p>
+                  <div className="text-[10px] font-mono text-[#5F6F66] text-right">{k.createdAt}</div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {kudos.length === 0 ? (
-            <div className="col-span-full p-6 text-center text-xs text-[#5F6F66]">
-              No kudos posted yet. Click "Give Kudos" to recognize a peer!
+        {/* Confidential Private Feedback Inbox */}
+        <div className="surface-card p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-[#22302A] pb-3">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-[#34D399]" />
+              <h3 className="text-sm font-semibold text-[#F4FAF7]">Confidential Feedback Inbox</h3>
             </div>
-          ) : (
-            kudos.map((k) => (
-              <div key={k.id} className="p-4 rounded-xl bg-[#16201B] border border-[#2F4239] space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-[#E8F1EC]">{k.fromName}</span>
-                  <span className="text-[#B5E35B] font-mono text-[10px]">→ {k.toName}</span>
-                </div>
-                <p className="text-xs text-[#93A59B] leading-relaxed">“{k.message}”</p>
-                <div className="text-[10px] font-mono text-[#5F6F66] text-right">{k.createdAt}</div>
+            <span className="text-xs font-mono text-[#34D399]">Only You & Sender</span>
+          </div>
+
+          <div className="space-y-3">
+            {privateFeedback.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[#5F6F66]">
+                No private feedback in your inbox. Constructive feedback received directly will appear here.
               </div>
-            ))
-          )}
+            ) : (
+              privateFeedback.map((f) => (
+                <div key={f.id} className="p-3.5 rounded-xl bg-[#16201B] border border-[#2F4239] space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <Lock className="w-3 h-3 text-[#34D399]" />
+                      <span className="font-medium text-[#E8F1EC]">
+                        {f.fromId === user.employeeId ? `Sent to ${f.toName}` : `From ${f.fromName}`}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-[#5F6F66]">{f.createdAt}</span>
+                  </div>
+                  <p className="text-xs text-[#E8F1EC] leading-relaxed italic bg-[#0F1613] p-2.5 rounded-lg border border-[#22302A]">
+                    “{f.message}”
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

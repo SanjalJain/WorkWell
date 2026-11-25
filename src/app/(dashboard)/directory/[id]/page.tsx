@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { getEmployeeProfile } from "@/modules/people/service";
-import { canViewCompensation } from "@/modules/people/policies";
+import { canViewCompensation, canEditEmployee } from "@/modules/people/policies";
+import { rawPrisma } from "@/lib/db";
 import { ArrowLeft, User, DollarSign, Lock, ShieldCheck, Calendar, Briefcase, GitBranch } from "lucide-react";
 import { Role } from "@prisma/client";
+import { EditEmployeeModal } from "../DirectoryClientComponents";
 
 interface EmployeeProfilePageProps {
   params: Promise<{ id: string }>;
@@ -26,10 +28,29 @@ export default async function EmployeeProfilePage({ params }: EmployeeProfilePag
   }
 
   const canSeeComp = canViewCompensation(user);
+  const canEdit = canEditEmployee(user);
+
+  let departments: Array<{ id: string; name: string }> = [];
+  let managers: Array<{ id: string; firstName: string; lastName: string; jobTitle: string }> = [];
+
+  if (canEdit) {
+    [departments, managers] = await Promise.all([
+      rawPrisma.department.findMany({
+        where: { organizationId: user.organizationId },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      rawPrisma.employee.findMany({
+        where: { organizationId: user.organizationId, status: "ACTIVE" },
+        select: { id: true, firstName: true, lastName: true, jobTitle: true },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+    ]);
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
+      <div className="flex items-center justify-between">
         <Link
           href="/directory"
           className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#93A59B] hover:text-[#34D399] transition-colors"
@@ -37,6 +58,14 @@ export default async function EmployeeProfilePage({ params }: EmployeeProfilePag
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to Directory</span>
         </Link>
+
+        {canEdit && (
+          <EditEmployeeModal
+            employee={employee}
+            departments={departments}
+            managers={managers}
+          />
+        )}
       </div>
 
       {/* Header Card */}

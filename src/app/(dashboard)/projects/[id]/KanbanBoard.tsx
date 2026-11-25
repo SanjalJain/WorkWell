@@ -19,6 +19,7 @@ interface KanbanBoardProps {
   projectId: string;
   initialTasks: TaskItem[];
   members: { id: string; name: string }[];
+  currentEmployeeId?: string | null;
 }
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
@@ -29,10 +30,27 @@ const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
   { status: TaskStatus.DONE, label: "Done", color: "text-[#4ADE80]" },
 ];
 
-export function KanbanBoard({ projectId, initialTasks, members }: KanbanBoardProps) {
+export function KanbanBoard({
+  projectId,
+  initialTasks,
+  members,
+  currentEmployeeId,
+}: KanbanBoardProps) {
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
   const [isPending, startTransition] = useTransition();
   const [activeModalCol, setActiveModalCol] = useState<TaskStatus | null>(null);
+  const [filterMode, setFilterMode] = useState<"ALL" | "MY_TASKS">("ALL");
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("ALL");
+
+  const visibleTasks = tasks.filter((t) => {
+    if (filterMode === "MY_TASKS" && currentEmployeeId) {
+      return t.assignee?.id === currentEmployeeId;
+    }
+    if (selectedAssignee !== "ALL") {
+      return t.assignee?.id === selectedAssignee;
+    }
+    return true;
+  });
 
   const getNextStatus = (current: TaskStatus): TaskStatus | null => {
     const idx = COLUMNS.findIndex((c) => c.status === current);
@@ -76,17 +94,69 @@ export function KanbanBoard({ projectId, initialTasks, members }: KanbanBoardPro
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* Controls Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#22302A] pb-3">
         <div className="flex items-center gap-2">
           <span className="font-mono-label text-[#2DB6A8]">Project Kanban</span>
-          <span className="text-xs font-mono text-[#5F6F66]">({tasks.length} Total Tasks)</span>
+          <span className="text-xs font-mono text-[#5F6F66]">
+            ({visibleTasks.length} / {tasks.length} Tasks)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs">
+          {currentEmployeeId && (
+            <div className="flex items-center rounded-lg bg-[#16201B] p-0.5 border border-[#22302A] text-xs font-mono">
+              <button
+                onClick={() => {
+                  setFilterMode("ALL");
+                  setSelectedAssignee("ALL");
+                }}
+                className={`px-2.5 py-1 rounded-md transition-all ${
+                  filterMode === "ALL" && selectedAssignee === "ALL"
+                    ? "bg-[#2DB6A8]/20 text-[#2DB6A8] font-semibold"
+                    : "text-[#93A59B] hover:text-[#E8F1EC]"
+                }`}
+              >
+                All Tasks
+              </button>
+              <button
+                onClick={() => {
+                  setFilterMode("MY_TASKS");
+                  setSelectedAssignee("ALL");
+                }}
+                className={`px-2.5 py-1 rounded-md transition-all ${
+                  filterMode === "MY_TASKS"
+                    ? "bg-[#2DB6A8]/20 text-[#2DB6A8] font-semibold"
+                    : "text-[#93A59B] hover:text-[#E8F1EC]"
+                }`}
+              >
+                My Tasks
+              </button>
+            </div>
+          )}
+
+          <select
+            value={selectedAssignee}
+            onChange={(e) => {
+              setSelectedAssignee(e.target.value);
+              setFilterMode("ALL");
+            }}
+            className="bg-[#16201B] border border-[#2F4239] rounded-lg px-2.5 py-1 text-xs text-[#E8F1EC] font-mono focus:outline-none focus:border-[#2DB6A8]"
+          >
+            <option value="ALL">All Assignees</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
       {/* 5-Column Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-4">
         {COLUMNS.map((col) => {
-          const colTasks = tasks
+          const colTasks = visibleTasks
             .filter((t) => t.status === col.status)
             .sort((a, b) => a.position - b.position);
 

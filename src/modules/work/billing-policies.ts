@@ -23,12 +23,7 @@ export function canViewInvoice(
   invoice: {
     organizationId: string;
     clientId: string;
-    lineItems?: Array<{
-      timeEntries?: Array<{
-        project?: { leadId?: string | null };
-        projectId?: string;
-      }>;
-    }>;
+    lineItems?: Array<any>;
   },
   managerLedProjectIds?: string[]
 ): boolean {
@@ -44,9 +39,9 @@ export function canViewInvoice(
   if (user.role === Role.MANAGER) {
     if (!user.employeeId) return false;
     if (invoice.lineItems && invoice.lineItems.length > 0) {
-      return invoice.lineItems.some((li) =>
+      return invoice.lineItems.some((li: any) =>
         li.timeEntries?.some(
-          (te) =>
+          (te: any) =>
             te.project?.leadId === user.employeeId ||
             (Boolean(managerLedProjectIds) && Boolean(te.projectId) && managerLedProjectIds!.includes(te.projectId!))
         )

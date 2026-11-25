@@ -138,7 +138,7 @@ export default async function TimesheetPage({ searchParams }: TimesheetPageProps
                 {timesheet.rows.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-5 py-8 text-center text-[#5F6F66]">
-                      No hours logged for this week. Click "Log Time" to add hours.
+                      No hours logged for this week. Click &ldquo;Log Time&rdquo; to add hours.
                     </td>
                   </tr>
                 ) : (

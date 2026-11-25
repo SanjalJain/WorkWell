@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getProjectDetails } from "@/modules/work/service";
 import { rawPrisma } from "@/lib/db";
 import { KanbanBoard } from "./KanbanBoard";
-import { AddProjectMemberModal } from "../ProjectClientComponents";
+import { AddProjectMemberModal, ProjectStatusSelector } from "../ProjectClientComponents";
 import { ArrowLeft, Building2, Users, DollarSign, Clock, ShieldCheck } from "lucide-react";
 import { Role } from "@prisma/client";
 
@@ -60,6 +60,14 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
           </div>
 
           <div className="flex items-center gap-3">
+            {canManage ? (
+              <ProjectStatusSelector projectId={project.id} currentStatus={project.status} />
+            ) : (
+              <span className="px-2.5 py-1 rounded text-[11px] font-mono uppercase bg-[#1D2A24] text-[#93A59B] border border-[#2F4239]">
+                {project.status}
+              </span>
+            )}
+
             {canManage && (
               <AddProjectMemberModal
                 projectId={project.id}
@@ -144,6 +152,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
           id: m.employee.id,
           name: `${m.employee.firstName} ${m.employee.lastName}`,
         }))}
+        currentEmployeeId={user.employeeId}
       />
     </div>
   );

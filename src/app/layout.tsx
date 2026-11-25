@@ -4,7 +4,6 @@ import { getSessionUser } from "@/lib/auth";
 import { RoleSwitcher } from "@/components/common/RoleSwitcher";
 import { AppNav } from "@/components/common/AppNav";
 import { Role } from "@prisma/client";
-
 export const metadata: Metadata = {
   title: "workWell — Modular People, Work & Performance",
   description: "Enterprise modular monolith for HR, agency work operations, and performance management.",
@@ -31,13 +30,17 @@ export default async function RootLayout({
           currentEmail={currentEmail}
         />
 
-        {/* Global Navigation Header */}
-        <AppNav role={currentRole} />
+        <div className="flex flex-col md:flex-row min-h-[calc(100vh-45px)]">
+          {/* Responsive Left Sidebar / Mobile Nav */}
+          <AppNav role={currentRole} />
 
-        {/* Main Content Area */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {children}
-        </main>
+          {/* Main Content Area */}
+          <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </main>
+        </div>
       </body>
     </html>
   );

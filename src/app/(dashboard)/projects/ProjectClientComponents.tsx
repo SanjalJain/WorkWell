@@ -1,9 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createProjectAction, addProjectMemberAction } from "@/app/actions/work-actions";
-import { ProjectType } from "@prisma/client";
-import { Plus, X, FolderPlus, UserPlus } from "lucide-react";
+import {
+  createClientAction,
+  createProjectAction,
+  updateProjectStatusAction,
+  addProjectMemberAction,
+} from "@/app/actions/work-actions";
+import { ProjectType, ProjectStatus } from "@prisma/client";
+import { Plus, X, FolderPlus, UserPlus, Building2 } from "lucide-react";
 
 interface CreateProjectModalProps {
   clients: { id: string; name: string }[];
@@ -260,5 +265,156 @@ export function AddProjectMemberModal({ projectId, employees }: AddMemberModalPr
         </div>
       )}
     </>
+  );
+}
+
+export function CreateClientModal() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+
+    startTransition(async () => {
+      try {
+        await createClientAction(formData);
+        setIsOpen(false);
+      } catch (err: any) {
+        setError(err.message || "Failed to create client");
+      }
+    });
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#16201B] hover:bg-[#1D2A24] text-[#E8F1EC] border border-[#2F4239] text-xs font-semibold transition-all"
+      >
+        <Building2 className="w-3.5 h-3.5 text-[#2DB6A8]" />
+        <span>New Client</span>
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="surface-card w-full max-w-sm p-6 space-y-4 border border-[#2F4239] animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[#22302A] pb-3">
+              <h3 className="text-base font-semibold text-[#F4FAF7]">Register Client Organization</h3>
+              <button onClick={() => setIsOpen(false)} className="text-[#93A59B] hover:text-[#E8F1EC]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {error && (
+              <div className="p-2.5 rounded-lg bg-[#F0646E]/10 border border-[#F0646E]/30 text-xs text-[#F0646E]">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-mono-label block mb-1">Company / Organization Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  placeholder="e.g. Acme Corporation"
+                  className="w-full bg-[#16201B] border border-[#2F4239] rounded-lg px-3 py-2 text-[#E8F1EC] focus:outline-none focus:border-[#2DB6A8]"
+                />
+              </div>
+
+              <div>
+                <label className="font-mono-label block mb-1">Billing Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="billing@acmecorp.com"
+                  className="w-full bg-[#16201B] border border-[#2F4239] rounded-lg px-3 py-2 text-[#E8F1EC] focus:outline-none focus:border-[#2DB6A8]"
+                />
+              </div>
+
+              <div>
+                <label className="font-mono-label block mb-1">Billing Address</label>
+                <textarea
+                  name="billingAddress"
+                  rows={2}
+                  placeholder="Street, City, Postal Code, Country"
+                  className="w-full bg-[#16201B] border border-[#2F4239] rounded-lg px-3 py-2 text-[#E8F1EC] focus:outline-none focus:border-[#2DB6A8]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#22302A]">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="px-3 py-1.5 rounded-lg bg-[#16201B] text-[#93A59B]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-4 py-1.5 rounded-lg bg-[#2DB6A8] text-[#04130C] font-semibold disabled:opacity-50"
+                >
+                  {isPending ? "Registering..." : "Register Client"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function ProjectStatusSelector({
+  projectId,
+  currentStatus,
+}: {
+  projectId: string;
+  currentStatus: ProjectStatus;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value as ProjectStatus;
+    startTransition(async () => {
+      await updateProjectStatusAction(projectId, newStatus);
+    });
+  };
+
+  return (
+    <div className="relative inline-block">
+      <select
+        value={currentStatus}
+        disabled={isPending}
+        onChange={handleStatusChange}
+        className={`px-2.5 py-1 rounded-md text-[11px] font-mono uppercase tracking-wider font-semibold border cursor-pointer focus:outline-none transition-all disabled:opacity-50 ${
+          currentStatus === ProjectStatus.ACTIVE
+            ? "bg-[#2DB6A8]/15 text-[#2DB6A8] border-[#2DB6A8]/30"
+            : currentStatus === ProjectStatus.COMPLETED
+            ? "bg-[#4ADE80]/15 text-[#4ADE80] border-[#4ADE80]/30"
+            : currentStatus === ProjectStatus.PLANNING
+            ? "bg-[#F2B84B]/15 text-[#F2B84B] border-[#F2B84B]/30"
+            : "bg-[#16201B] text-[#93A59B] border-[#22302A]"
+        }`}
+      >
+        <option value={ProjectStatus.PLANNING} className="bg-[#16201B] text-[#F2B84B]">
+          Planning
+        </option>
+        <option value={ProjectStatus.ACTIVE} className="bg-[#16201B] text-[#2DB6A8]">
+          Active
+        </option>
+        <option value={ProjectStatus.COMPLETED} className="bg-[#16201B] text-[#4ADE80]">
+          Completed
+        </option>
+        <option value={ProjectStatus.ARCHIVED} className="bg-[#16201B] text-[#93A59B]">
+          Archived
+        </option>
+      </select>
+    </div>
   );
 }

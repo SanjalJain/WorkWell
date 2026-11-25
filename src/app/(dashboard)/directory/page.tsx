@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { listEmployees } from "@/modules/people/service";
-import { canViewCompensation } from "@/modules/people/policies";
+import { canViewCompensation, canEditEmployee } from "@/modules/people/policies";
 import { rawPrisma } from "@/lib/db";
-import { Users, Building2, ShieldAlert, ArrowRight, Network, Lock, DollarSign } from "lucide-react";
+import { Users, Building2, ArrowRight, Network, Lock, DollarSign } from "lucide-react";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { AddEmployeeModal, DirectoryPagination } from "./DirectoryClientComponents";
 
 interface DirectoryPageProps {
   searchParams: Promise<{ search?: string; departmentId?: string; page?: string }>;
@@ -24,15 +25,22 @@ export default async function DirectoryPage({ searchParams }: DirectoryPageProps
   const search = resolvedParams.search ?? "";
   const departmentId = resolvedParams.departmentId ?? "";
 
-  const [data, departments] = await Promise.all([
+  const [data, departments, managers] = await Promise.all([
     listEmployees({ search, departmentId: departmentId || undefined, page, limit: 12 }, user),
     rawPrisma.department.findMany({
       where: { organizationId: user.organizationId },
+      select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    rawPrisma.employee.findMany({
+      where: { organizationId: user.organizationId, status: "ACTIVE" },
+      select: { id: true, firstName: true, lastName: true, jobTitle: true },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     }),
   ]);
 
   const canSeeComp = canViewCompensation(user);
+  const canAdd = canEditEmployee(user);
 
   return (
     <div className="space-y-8">
@@ -48,6 +56,7 @@ export default async function DirectoryPage({ searchParams }: DirectoryPageProps
         </div>
 
         <div className="flex items-center gap-3">
+          {canAdd && <AddEmployeeModal departments={departments} managers={managers} />}
           <Link
             href="/directory/org-chart"
             className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#16201B] hover:bg-[#1D2A24] text-[#E8F1EC] border border-[#2F4239] text-xs font-medium transition-all"
@@ -222,6 +231,18 @@ export default async function DirectoryPage({ searchParams }: DirectoryPageProps
             </tbody>
           </table>
         </div>
+
+        {data.totalPages > 1 && (
+          <div className="p-4 border-t border-[#22302A] bg-[#16201B]/20">
+            <DirectoryPagination
+              currentPage={data.page}
+              totalPages={data.totalPages}
+              totalRecords={data.total}
+              search={search}
+              departmentId={departmentId}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

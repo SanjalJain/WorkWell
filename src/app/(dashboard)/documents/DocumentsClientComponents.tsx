@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { createDocumentAction } from "@/app/actions/hr-actions";
+import { useState, useTransition, useRef } from "react";
+import { createDocumentAction, getUploadUrlAction } from "@/app/actions/hr-actions";
 import { DocumentCategory } from "@prisma/client";
-import { Plus, X, UploadCloud, Download, FileText, ShieldAlert } from "lucide-react";
+import { Plus, X, UploadCloud, Download, FileText, CheckCircle2 } from "lucide-react";
 
 interface UploadModalProps {
   employees: { id: string; name: string }[];
@@ -19,19 +19,80 @@ export function UploadDocumentModal({
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [docName, setDocName] = useState("");
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      if (!docName) {
+        setDocName(file.name);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    const form = e.currentTarget;
-    const formData = new FormData(form);
+    if (!selectedFile) {
+      setError("Please choose a file to upload.");
+      return;
+    }
+
+    const targetEmployeeId = canUploadAny
+      ? (e.currentTarget.employeeId as HTMLSelectElement)?.value || currentEmployeeId
+      : currentEmployeeId;
+
+    if (!targetEmployeeId) {
+      setError("Employee ID is required.");
+      return;
+    }
+
+    const categoryVal = (e.currentTarget.category as HTMLSelectElement)?.value || DocumentCategory.OTHER;
 
     startTransition(async () => {
       try {
+        setUploadProgress("Generating encrypted storage URL...");
+        const presigned = await getUploadUrlAction(selectedFile.name, selectedFile.type);
+        if (!presigned.uploadUrl) {
+          throw new Error("Failed to obtain signed upload URL");
+        }
+
+        setUploadProgress("Uploading file to secure object vault...");
+        const res = await fetch(presigned.uploadUrl, {
+          method: "PUT",
+          body: selectedFile,
+          headers: {
+            "Content-Type": selectedFile.type || "application/octet-stream",
+          },
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || "Failed to upload file to storage");
+        }
+
+        setUploadProgress("Registering document record in database...");
+        const formData = new FormData();
+        formData.set("employeeId", targetEmployeeId);
+        formData.set("name", docName || selectedFile.name);
+        formData.set("category", categoryVal);
+        formData.set("fileUrl", presigned.key);
+        formData.set("fileSize", selectedFile.size.toString());
+        formData.set("mimeType", selectedFile.type || "application/octet-stream");
+
         await createDocumentAction(formData);
+
         setIsOpen(false);
+        setSelectedFile(null);
+        setDocName("");
+        setUploadProgress(null);
       } catch (err: any) {
-        setError(err.message || "Failed to upload document record");
+        setError(err.message || "Failed to upload document");
+        setUploadProgress(null);
       }
     });
   };
@@ -48,10 +109,17 @@ export function UploadDocumentModal({
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="surface-card w-full max-w-md p-6 space-y-5 border border-[#2F4239] animate-in fade-in zoom-in-95 duration-150">
+          <div className="surface-card w-full max-w-md p-6 space-y-4 border border-[#2F4239] animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#22302A] pb-3">
               <h3 className="text-base font-semibold text-[#F4FAF7]">Upload Employee Document</h3>
-              <button onClick={() => setIsOpen(false)} className="text-[#93A59B] hover:text-[#E8F1EC]">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  setSelectedFile(null);
+                  setError(null);
+                }}
+                className="text-[#93A59B] hover:text-[#E8F1EC]"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -62,7 +130,7 @@ export function UploadDocumentModal({
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
               {canUploadAny ? (
                 <div>
                   <label className="font-mono-label block mb-1">Target Employee</label>
@@ -83,12 +151,53 @@ export function UploadDocumentModal({
                 <input type="hidden" name="employeeId" value={currentEmployeeId || ""} />
               )}
 
+              {/* Real File Input & Drop Area */}
               <div>
-                <label className="font-mono-label block mb-1">Document Title</label>
+                <label className="font-mono-label block mb-1">File Attachment (Max 15MB)</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  required
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp,.txt"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-4 border-2 border-dashed border-[#2F4239] hover:border-[#34D399]/60 rounded-xl bg-[#16201B]/50 hover:bg-[#16201B] cursor-pointer transition-all flex flex-col items-center justify-center text-center gap-1.5"
+                >
+                  <UploadCloud className="w-6 h-6 text-[#34D399]" />
+                  {selectedFile ? (
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-medium text-[#E8F1EC] flex items-center justify-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#34D399]" />
+                        <span>{selectedFile.name}</span>
+                      </div>
+                      <div className="text-[10px] font-mono text-[#93A59B]">
+                        {(selectedFile.size / 1024).toFixed(1)} KB &bull; Click to replace
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-xs font-medium text-[#E8F1EC]">
+                        Choose a file or click to browse
+                      </span>
+                      <span className="text-[10px] text-[#5F6F66] block">
+                        PDF, DOCX, CSV, PNG, JPG up to 15MB
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="font-mono-label block mb-1">Document Display Title</label>
                 <input
                   type="text"
                   name="name"
                   required
+                  value={docName}
+                  onChange={(e) => setDocName(e.target.value)}
                   placeholder="e.g. Employment Contract 2026.pdf"
                   className="w-full bg-[#16201B] border border-[#2F4239] rounded-lg px-3 py-2 text-[#E8F1EC] placeholder-[#5F6F66] focus:outline-none focus:border-[#34D399]"
                 />
@@ -108,35 +217,32 @@ export function UploadDocumentModal({
                 </select>
               </div>
 
-              <div>
-                <label className="font-mono-label block mb-1">Storage Path / File Key</label>
-                <input
-                  type="text"
-                  name="fileUrl"
-                  required
-                  defaultValue={`docs/${Date.now()}-sample.pdf`}
-                  placeholder="docs/contracts/..."
-                  className="w-full bg-[#16201B] border border-[#2F4239] rounded-lg px-3 py-2 text-[#E8F1EC] font-mono text-[11px] focus:outline-none focus:border-[#34D399]"
-                />
-                <span className="text-[10px] text-[#5F6F66] mt-0.5 block">
-                  Encrypted object storage key with automatic HMAC access verification.
-                </span>
-              </div>
+              {uploadProgress && (
+                <div className="p-2.5 rounded bg-[#16201B] border border-[#34D399]/30 text-[11px] text-[#34D399] font-mono flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-[#34D399] animate-pulse" />
+                  <span>{uploadProgress}</span>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#22302A]">
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  disabled={isPending}
+                  onClick={() => {
+                    setIsOpen(false);
+                    setSelectedFile(null);
+                    setError(null);
+                  }}
                   className="px-3 py-1.5 rounded-lg bg-[#16201B] text-[#93A59B]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isPending}
-                  className="px-4 py-1.5 rounded-lg bg-[#34D399] text-[#04130C] font-semibold disabled:opacity-50"
+                  disabled={isPending || !selectedFile}
+                  className="px-4 py-1.5 rounded-lg bg-[#34D399] text-[#04130C] font-semibold disabled:opacity-50 transition-all"
                 >
-                  {isPending ? "Uploading..." : "Save Document"}
+                  {isPending ? "Uploading..." : "Upload & Save"}
                 </button>
               </div>
             </form>

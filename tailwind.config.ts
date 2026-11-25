@@ -41,7 +41,9 @@ const config: Config = {
       },
       fontFamily: {
         display: ["var(--font-display)", "Georgia", "serif"],
+        "serif-display": ["var(--font-display)", "Georgia", "serif"],
         ui: ["var(--font-ui)", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        sans: ["var(--font-ui)", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       boxShadow: {
